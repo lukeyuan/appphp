@@ -1,9 +1,9 @@
 ---
-Name: phppugin 
-Cartridge-Short-Name: PLUGIN
-Display-Name: My test php plugin
-Description: A plugin cartridge for test.
-Source-Url: https://github.com/lukeyuan/phpplugin.git
+Name: appphp 
+Cartridge-Short-Name: APPPHP
+Display-Name: App php plugin
+Description: App php plugin
+Source-Url: https://github.com/lukeyuan/appphp.git
 Version: '0.1'
 License: "None"
 Vendor: scnu
@@ -11,13 +11,9 @@ Cartridge-Version: 0.0.1
 Cartridge-Vendor: luke
 Categories:
  - embedded
+Provides:
+ - appphp-0.1
+ - appphp
 Scaling:
   Min: 1
   Max: 1
-Endpoints:
-- Private-IP-Name: IP
-  Private-Port-Name: PORT
-  Private-Port: 8080
-  Public-Port-Name: EXAMPLE_PUBLIC_PORT1
-  Protocols: [tcp]
-
