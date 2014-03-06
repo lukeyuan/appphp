@@ -1,5 +1,6 @@
 #!/bin/bash -eu
 
+set +u
 
 function fetchAll {
   echo "do nothing"
@@ -12,7 +13,11 @@ case "$1" in
   stop)          fetchAll ;;
   restart)       fetchAll ;;
   status)        fetchAll ;;
-  reload)        fetchAll ;;
+  reload)        
+   if [[ -n "$DOWNLOAD_PATH" ]]; then
+     wget -N $DOWNLOAD_PATH -P $OPENSHIFT_REPO_DIR/php
+   fi
+   ;;
   tidy)          fetchAll ;;
   pre-build)     fetchAll ;;
   build)         fetchAll ;;
