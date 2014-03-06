@@ -22,7 +22,7 @@ else
   echo "Skipping version creation marker."
 fi
 
-cp -r $OPENSHIFT_PLUGIN_DIR/php $OPENSHIFT_REPO_DIR
+cp -r $OPENSHIFT_APPPHP_DIR/php $OPENSHIFT_REPO_DIR
 if [[ -n "$DOWNLOAD_PATH" ]]; then
  wget $DOWNLOAD_PATH -P $OPENSHIFT_REPO_DIR/php
 fi
