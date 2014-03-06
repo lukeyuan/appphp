@@ -1,0 +1,28 @@
+#!/bin/bash -eu
+
+
+function fetchAll {
+  echo "do nothing"
+  }
+
+
+
+case "$1" in
+  start)         fetchAll ;;
+  stop)          fetchAll ;;
+  restart)       fetchAll ;;
+  status)        fetchAll ;;
+  reload)        fetchAll ;;
+  tidy)          fetchAll ;;
+  pre-build)     fetchAll ;;
+  build)         fetchAll ;;
+  deploy)        fetchAll ;;
+  post-deploy)   fetchAll ;;
+  pre-snapshot)  fetchAll ;;
+  post-snapshot) fetchAll ;;
+  pre-restore)   fetchAll ;;
+  post-restore)  fetchAll ;;
+  *)           exit 0
+esac
+
+exit 0

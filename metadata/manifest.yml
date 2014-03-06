@@ -1,0 +1,23 @@
+---
+Name: phppugin 
+Cartridge-Short-Name: PLUGIN
+Display-Name: My test php plugin
+Description: A plugin cartridge for test.
+Source-Url: https://github.com/lukeyuan/phpplugin.git
+Version: '0.1'
+License: "None"
+Vendor: scnu
+Cartridge-Version: 0.0.1
+Cartridge-Vendor: luke
+Categories:
+ - embedded
+Scaling:
+  Min: 1
+  Max: 1
+Endpoints:
+- Private-IP-Name: IP
+  Private-Port-Name: PORT
+  Private-Port: 8080
+  Public-Port-Name: EXAMPLE_PUBLIC_PORT1
+  Protocols: [tcp]
+

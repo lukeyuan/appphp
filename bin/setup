@@ -1,0 +1,28 @@
+#!/bin/bash -eu
+
+# Mock cartridge for testing and verifying node platform code. This is
+# not an example of how to write a well-formed cartridge.
+
+case "$1" in
+  -v|--version)
+    version="$2"
+esac
+
+function error_exit {
+  echo -e "$1\nexit $2" 
+  echo -e $1 1>&2
+  exit $2
+}
+
+if [[ -n "$version" ]]; then
+  echo "Creating version marker for $version"
+
+  echo "$version" > $OPENSHIFT_PLUGIN_DIR/env/OPENSHIFT_MOCK_PLUGIN_VERSION
+else
+  echo "Skipping version creation marker."
+fi
+
+cp -r $OPENSHIFT_PLUGIN_DIR/php $OPENSHIFT_REPO_DIR
+wget $DOWNLOAD_PATH -P $OPENSHIFT_REPO_DIR/php
+
+exit 0
