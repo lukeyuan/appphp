@@ -1,161 +1,289 @@
 <?php
-	// require_once('connectvars.php');
-	//建表所用
-	// $tbn = 'tb' . strval(rand(1, 1000));
-	// $itn = array('id', 'title', 'content', 'location', 'photo', 'audio', 'submit_user', 'submit_time', 'status');
-	// $tpn = array('INT', 'VARCHAR(20)', 'VARCHAR(150)', 'VARCHAR(100)', 'VARCHAR(100)', 'VARCHAR(100)', 'VARCHAR(20)', 'DATETIME', 'INT');
+	require_once('connectvars.php');
 
-	//插入所用
-	// $itn =	array('id', 'title', 'content', 'location', 'photo', 'audio', 'submit_user', 'submit_time');
-	// $vals = array(1, "'A Good Bird'", "'There is a bird in the tree'", "'west 3'", "'4.png'", "'2.amr'", "'Jiechao'", 'NOW()');
-
-	//查询、删除、更新所用
-	// $op1 = array('id', 'title');
-	// $op = array('<', '=');
-	// $op2 = array(2, 'A Good Bird');
-	// $log = array('OR');
-	// $log2 = array('AND');
-
-	//更新所用
-	// $keys = array('submit_user', 'location');
-	// $values = array('xiaodanding', '520');
-
-	// $this->dbc = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME) or die('error conecting to database.');
-
-
-	// create_table($this->dbc, $tbn, $itn, $tpn) or die('error querying database');
-
-	// insert_into($this->dbc, 'tb950', $itn, $vals) or die('error querying database');
-
-
-	// $data = select($this->dbc, $itn, 'tb950', $op1, $op, $op2, $log);
-
-	// delete($this->dbc, 'tb950', $op1, $op, $op2, $log2);
-
-	// update($this->dbc, 'tb950', $keys, $values, $op1, $op, $op2, $log2);
-/**
-* 
-*/
-class SQL
-{
-	
-	public $dbc;
-
-	function __construct()
+	/**
+	* MongoDB的接口
+	*/
+	class NoSQL
 	{
-		# code...
+		public $mongo_client;
+		public $dbc;
+
+		function __construct() {
+		}
+
+		//数据库连接
+		function connect() {
+			$this->mongo_client = new MongoClient(DB_URL);
+			$this->dbc = $this->mongo_client->selectDB(DB_NAME);
+		}
+
+		//数据库关闭
+		function close() {
+			$this->dbc = null;
+			return $this->mongo_client->close();
+		}
+
+		//插入
+		function insert($table, $keys_values) {
+			return $this->dbc->$table->insert($keys_values);
+		}
+
+		//内部插入接口
+		function insert_all($json_content) {
+			// $json_content = json_decode($json);
+			$table = $json_content->table;
+			$data = $json_content->data;
+			$len = count($data);
+			for($i = 1; $i < $len; $i++) {
+				$this->insert($table, array_combine($data[0], $data[$i]));
+			}
+		}
+
+		//查询
+		function select($table, $criteria = array(), $fields = array()) {
+		    return $this->dbc->$table->find($criteria, $fields);
+		}
+
+		//删除表
+		function drop($table) {
+			return $this->dbc->$table->drop();
+		}
+
+		//删除表中信息
+		function delete($table, $criteria = array()) {
+			return $this->dbc->$table->remove($criteria);
+		}
+
+		//更新
+		function update($table, $modify, $criteria = array()) {
+			return $this->dbc->$table->update($criteria, array('$set' => $modify));
+		}
 	}
 
-	//数据库连接
-	function connect() {
-		$this->dbc = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME) or die('error connecting to database.');
-	}
+	/**
+	* MySQL的接口
+	*/
+	class MySQL
+	{
+		public $dbc;
 
-	//数据库关闭
-	function close() {
-		mysqli_close($this->dbc);
-	}
+		function __construct() {
+		}
 
-	//建表
-	function create_table($tablename, $itemname, $typename, $default = null, $primarykey = null) {
-		$query = 'CREATE TABLE ' . $tablename . '(';
-		$len = count($itemname);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$item = $itemname[$i];
-			$query .= ' ' . $item . ' ' . $typename[$i];
+		//数据库连接
+		function connect() {
+			$this->dbc = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+			// mysqli_query($this->dbc, "SET NAMES 'utf8'");
+		}
+
+		//数据库关闭
+		function close() {
+			mysqli_close($this->dbc);
+		}
+
+		//建表
+		function create($table, $items_types, $notnull = array(), $default = array(), $auto_increment = array(), $primarykey = null) {
+			$query = 'CREATE TABLE ' . $table . '(';
+			$items = array();
+			$types = array();
+			foreach ($items_types as $key => $value) {
+				array_push($items, $key);
+				array_push($types, $value);
+			}
+			$len = count($items_types);
+			for ($i = 0; $i < $len-1; $i++) { 
+				$item = $items[$i];
+				$query .= ' ' . $item . ' ' . $types[$i];
+				if(in_array($item, $notnull)) {
+					$query .= " NOT NULL";
+				}
+				if(array_key_exists($item, $default)) {
+					$query .= " DEFAULT '$default[$item]'";
+				}
+				if(in_array($item, $auto_increment)) {
+					$query .= " AUTO_INCREMENT";
+				}
+				$query .= ',';
+			}
+			$item = $items[$len-1];
+			$query .= ' ' . $item . ' ' . $types[$len-1];
+			if(in_array($item, $notnull)) {
+				$query .= " NOT NULL";
+			}
 			if(array_key_exists($item, $default)) {
 				$query .= " DEFAULT '$default[$item]'";
 			}
-			$query .= ',';
+			if(in_array($item, $auto_increment)) {
+				$query .= " AUTO_INCREMENT";
+			}
+			if(!empty($primarykey)) {
+				$query .= ', PRIMARY KEY (' . $primarykey . ')';
+			}
+			$query .= ' );';
+			// echo "$query <br />";
+			return mysqli_query($this->dbc, $query);
 		}
-		$item = $itemname[$len-1];
-		$query .= ' ' . $item . ' ' . $typename[$len-1];
-		if(array_key_exists($item, $default)) {
-			$query .= " DEFAULT '$default[$item]'";
+
+		//插入
+		function insert($table, $keys_values) {
+			$keys = array();
+			$values = array();
+			foreach ($keys_values as $key => $value) {
+				array_push($keys, $key);
+				array_push($values, $value);
+			}
+			$query = 'INSERT INTO ' . $table . ' (';
+			$len = count($keys_values);
+			for ($i = 0; $i < $len-1; $i++) { 
+				$query .= ' ' . $keys[$i] . ',';
+			}
+			$query .= ' ' . $keys[$len-1] . ' ) VALUES ( ';
+			for ($i = 0; $i < $len-1; $i++) { 
+				$query .= "'$values[$i]', ";
+			}
+			$value = $values[$len-1];
+			$query .= "'$value' );";
+			// echo $query . '<br />';
+			return mysqli_query($this->dbc, $query);
 		}
-		if(!empty($primarykey)) {
-			$query .= ', PRIMARY KEY (' . $primarykey . ')';
+
+		//内部插入接口
+		function insert_all($json_content) {
+			// $json_content = json_decode($json);
+			$table = $json_content->table;
+			$data = $json_content->data;
+			$len = count($data);
+			for($i = 1; $i < $len; $i++) {
+				$this->insert($table, array_combine($data[0], $data[$i]));
+			}
 		}
-		$query .= ');';
-//		echo $query . '<br />';
-		return mysqli_query($this->dbc, $query);
+
+		function mysql_get_criteria($arr, &$ret) {
+			$ret .= '( ';
+			$len = count($arr);
+			// echo "dep = $dep, len = $len <br />";
+			$cur = 0;
+			foreach ($arr as $key => $value) {
+				if($key == '$or') {
+					$len = count($value);
+					for ($i = 0; $i < $len-1; $i++) { 
+						$this->mysql_get_criteria($value[$i], $ret);
+						$ret .= ' OR ';
+					}
+					$this->mysql_get_criteria($value[$len-1], $ret);
+				}
+				else if(is_array($value)) {		//不是 =
+					foreach ($value as $k => $v) {
+						if($k == '$gt') {
+							$ret .= "( $key > '$v' )";
+						}
+						else if($k == '$lt') {
+							$ret .= "( $key < '$v' )";
+						}
+						else if($k == '$ne') {
+							$ret .= "( $key != '$v' )";
+						}
+						else if($k == '$gte') {
+							$ret .= "( $key >= '$v' )";
+						}
+						else if($k == '$lte') {
+							$ret .= "( $key <= '$v' )";
+						}
+						else if($k == '$or') {
+							$x = 0;
+							foreach ($v as $val) {
+								$ret .= "( $key = '$val' )";
+								if($x < count($v)-1) $ret .= ' OR ';
+								$x++;
+							}
+						}
+					}
+				}
+				else {		//是 =
+					$ret .= "( $key = '$value' )";
+				}
+				if($cur < count($arr)-1) $ret .= ' AND ';
+				$cur++;
+			}
+			$ret .= ' )';
+			// echo "ret = $ret <br /> cur = $cur, dep = $dep, len = $len <br /> <br />";
+		}
+
+		//查询		条件是一个调用的过程
+		function select($table, $criteria = array(), $fields = array()) {
+			$query = '';
+			if(empty($criteria)) {
+				$query = "SELECT * FROM $table;";
+			}
+			else {
+				$query = 'SELECT ';
+				$len = count($fields);
+				for ($i = 0; $i < $len; $i++) { 
+					$query .= $fields[$i];
+					if($i < $len-1) $query .= ', ';
+				}
+				$query .= " FROM $table WHERE ";
+				$this->mysql_get_criteria($criteria, $query);
+				$query .= ';';
+			}
+			// echo $query . '<br />';
+			$this->mf('query', $query);
+			// mysqli_query($this->dbc, "SET NAMES 'uft8'");
+			// $this->mf('ret', json_encode(mysqli_query($this->dbc, $query)));
+			
+			return mysqli_query($this->dbc, $query);
+		}
+
+		//删除表
+		function drop($table) {
+			$query = "DROP TABLE $table;";
+			return mysqli_query($this->dbc, $query);
+		}
+
+		//删除表中记录
+		function delete($table, $criteria = array()) {
+			$query = '';
+			if(empty($criteria)) {
+				$query = "DELETE FROM $table;";
+			}
+			else {
+				$query = 'DELETE FROM ' . $table . ' WHERE ';
+				$this->mysql_get_criteria($criteria, $query);
+				$query .= ';';
+			}
+			// echo $query . '<br />';
+			return mysqli_query($this->dbc, $query);
+		}
+
+		//更新
+		function update($table, $modify, $criteria = array()) {
+			$query = $query = "UPDATE $table SET ";
+			$len = count($modify);
+			$i = 0;
+			foreach ($modify as $key => $value) {
+				$query .= "$key = '$value'";
+				if($i < $len-1) $query .= ', ';
+				$i++;
+			}
+			if(!empty($criteria)) {
+				$query .= ' WHERE ';
+				$this->mysql_get_criteria($criteria, $query);
+			}
+			$query .= ';';
+			// echo "$query <br />";
+			return mysqli_query($this->dbc, $query);
+		}
+
+		//设置连入编码方式
+		function setnames($encoding) {
+			return mysqli_query($this->dbc, "SET NAMES '$encoding'");
+		}
+
+		function mf($name, $str) {
+			$handle = fopen($name, 'w');
+			fwrite($handle, $str);
+			fclose($handle);
+		}
 	}
-
-	//插入
-	function insert_into($tablename, $itemname, $values) {
-		$query = 'INSERT INTO ' . $tablename . '(';
-		$len = count($itemname);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$query .= ' ' . $itemname[$i] . ',';
-		}
-		$query .= ' ' . $itemname[$len-1] . ' ) VALUES (';
-		for ($i = 0; $i < $len-1; $i++) { 
-			$query .= ' ' . $values[$i] . ',';
-		}
-		$query .= ' ' . $values[$len-1] . ' );';
-		echo $query . '<br />';
-		return mysqli_query($this->dbc, $query);
-	}
-
-	//查询
-	function select($itemname, $tablename, $operand1, $operator, $operand2, $log) {
-		$query = 'SELECT ';
-		$len = count($itemname);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$query .= $itemname[$i] . ', ';
-		}
-		$query .= $itemname[$len-1] . ' FROM ' . $tablename . ' WHERE ';
-		$len = count($operand1);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$val = $operand2[$i];
-			$query .= $operand1[$i] . $operator[$i] . "'$val' " . $log[$i] . ' ';
-		}
-		$val = $operand2[$len-1];
-		$query .= $operand1[$len-1] . $operator[$len-1] . "'$val';";
-		//echo $query . '<br />';
-		return mysqli_query($this->dbc, $query);
-	}
-
-	//删除
-	function delete($tablename, $operand1, $operator, $operand2, $log) {
-		$query = 'DELETE FROM ' . $tablename . ' WHERE ';
-		$len = count($operand1);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$val = $operand2[$i];
-			$query .= $operand1[$i] . $operator[$i] . "'$val' " . $log[$i] . ' ';
-		}
-		$val = $operand2[$len-1];
-		$query .= $operand1[$len-1] . $operator[$len-1] . "'$val';";
-		echo $query . '<br />';
-		return mysqli_query($this->dbc, $query);
-	}
-
-	//更新
-	function update($tablename, $keys, $values, $operand1, $operator, $operand2, $log) {
-		$query = 'UPDATE ' . $tablename . ' SET ';
-		$len = count($keys);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$val = $values[$i];
-			$query .= $keys[$i] . ' = ' . "'$val'" . ', ';
-		}
-		$val = $values[$len-1];
-		$query .= $keys[$len-1] . ' = ' . "'$val' WHERE ";
-		$len = count($operand1);
-		for ($i = 0; $i < $len-1; $i++) { 
-			$val = $operand2[$i];
-			$query .= $operand1[$i] . $operator[$i] . "'$val' " . $log[$i] . ' ';
-		}
-		$val = $operand2[$len-1];
-		$query .= $operand1[$len-1] . $operator[$len-1] . "'$val';";
-		echo $query . '<br />';
-		return mysqli_query($this->dbc, $query);
-	}
-
-	//设置连入的编码方式
-	function set_names($encode) {
-		mysqli_query($this->dbc, "SET NAMES '$encode'");
-	}
-
-}
-
 ?>
