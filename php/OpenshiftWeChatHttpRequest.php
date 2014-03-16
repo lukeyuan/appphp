@@ -7,7 +7,6 @@
 		require_once('WeChatValid.php');		
 		$pvalid = new PValid();
 		$result = $pvalid->all($para);
-		//mf('YES');
 		echo $_GET['echostr'];
 	}
 	else {
@@ -24,25 +23,18 @@
 			}
 			$para = array_merge($para, array_combine($names, $values));
 		}
-		require_once('logic.php');
-		require_once('sql.php');
+		require_once('sql.php');		//引入数据库接口
+		require_once('logic.php');		//引入逻辑模块
 		$logic = new Logic();
 		$result = $logic->all($para);
-		$textTpl = "<?xml version='1.0' encoding='utf-8' ?>
-					<xml>
+		$textTpl = "<xml>
 						<ToUserName><![CDATA[%s]]></ToUserName>
 						<FromUserName><![CDATA[%s]]></FromUserName>
 						<CreateTime>%s</CreateTime>
 						<MsgType><![CDATA[%s]]></MsgType>
 						<Content><![CDATA[%s]]></Content>
 						<FuncFlag>0</FuncFlag>
-					</xml>";             
-	  	echo sprintf($textTpl, $para['FromUserName'], $para['ToUserName'], time(), $result['MsgType'], $result['Content']);
+					</xml>";	
+	   	echo sprintf($textTpl, $para['FromUserName'], $para['ToUserName'], time(), $result['MsgType'], $result['Content']);
 	}
-	
-	function mf($name) {
-        $handle = fopen($name, 'w');
-        fwrite($handle, 'string');
-        fclose($handle);
-    }
 ?>

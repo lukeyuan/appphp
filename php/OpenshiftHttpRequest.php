@@ -3,7 +3,6 @@
 	require_once('logic.php');		//引入逻辑模块
 	
 	$para = array_merge($_GET, $_POST, $_FILES);
-mf('para', $para['Content']);
 	$logic = new Logic();		
 	if(array_key_exists('class', $_POST)) {		//判断class字段有没值，有的话新建逻辑模块的对象
 
