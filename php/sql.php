@@ -79,8 +79,8 @@
 		}
 
 		//设置连入编码方式
-		function setnames($encoding) {
-			return $this->sql->setnames($encoding);
+		function set_names($encoding) {
+			return $this->sql->set_names($encoding);
 		}
 	}
 
@@ -320,10 +320,24 @@
 		
 		//查询		条件是一个调用的过程
 		function select($table, $criteria = '', $fields = array()) {
-			$query = '';
-			if(empty($criteria)) {
-				$query = "SELECT * FROM $table;";
+			// 缓存cache的路径
+			$cache_filename = hash('md5', $table . $criteria . implode('', $fields));
+			$cache_path = 'cache/' . $cache_filename;
+
+			// 判断是否存在缓存
+			if(file_exists($cache_path)) {
+				// printf("%s\n", fileatime($cache_path));
+				// printf("%s\n", time() - fileatime($cache_path));
+				if(time() - fileatime($cache_path) > 200) {
+					unlink($cache_path);
+				}
+				else return json_decode(file_get_contents($cache_path));
 			}
+
+			// 不存在缓存或者缓存过期时
+			// 构造查询语句
+			$query = '';
+			if(empty($criteria)) $query = "SELECT * FROM $table;";
 			else {
 				$query = 'SELECT ';
 				if(empty($fields)) $query .= '*';
@@ -337,8 +351,23 @@
 				$query .= " FROM $table WHERE " . $this->get_mysql_criteria($criteria);
 				$query .= ';';
 			}
-			// echo $query . '<br />';
-			return mysqli_query($this->dbc, $query);
+
+			// 在数据库中查询
+			$data = mysqli_query($this->dbc, $query);
+			if($data) {
+				$ret = array();
+				while ($row = mysqli_fetch_array($data)) array_push($ret, $row);
+				$json = json_encode($ret);
+				$this->set_cache($cache_path, $json);		//缓存
+				return json_decode($json);
+			}
+			else return $data;
+		}
+
+		function set_cache($filepath, $content) {
+			$handle = fopen($filepath, 'w');
+			fwrite($handle, $content);
+			fclose($handle);
 		}
 
 		//删除表
@@ -380,7 +409,7 @@
 		}
 
 		//设置连入编码方式
-		function setnames($encoding) {
+		function set_names($encoding) {
 			return mysqli_query($this->dbc, "SET NAMES '$encoding'");
 		}
 
