@@ -1,6 +1,7 @@
 <?php
 	require_once('sql.php');		//引入数据库接口
 	require_once('logic.php');		//引入逻辑模块
+	require_once('statemachine.php');
 	
 	$para = array_merge($_GET, $_POST, $_FILES);
 	$logic = new Logic();		
@@ -16,9 +17,4 @@
 		}
 	}
 
-	function mf($name, $str) {
-		$handle = fopen($name, 'w');
-		fwrite($handle, $str);
-		fclose($handle);
-	}
 ?>

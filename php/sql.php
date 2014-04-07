@@ -79,8 +79,8 @@
 		}
 
 		//设置连入编码方式
-		function setnames($encoding) {
-			return $this->sql->setnames($encoding);
+		function set_names($encoding) {
+			return $this->sql->set_names($encoding);
 		}
 	}
 
@@ -130,7 +130,36 @@
 
 		//查询
 		function select($table, $criteria = '', $fields = array()) {
-		    return $this->dbc->$table->find($this->get_mongo_criteria($criteria), $fields);
+			// 缓存cache的路径
+			$cache_filename = hash('md5', $table . $criteria . implode('', $fields));
+			$cache_path = 'cache/' . $cache_filename;
+
+			// 判断是否存在缓存
+			if(file_exists($cache_path)) {
+				if(time() - fileatime($cache_path) > 200) {
+					unlink($cache_path);
+				}
+				else return json_decode(file_get_contents($cache_path));
+			}
+
+			// 不存在缓存或者缓存过期时
+			// 构造查询语句
+			$res = $this->get_mongo_criteria($criteria);
+			if(empty($criteria)) $cursor = $this->dbc->$table->find();
+			else $cursor = $this->dbc->$table->find($res, $fields);
+			$ret = array();
+			foreach ($cursor as $key => $value) {
+				array_push($ret, $value);
+			}
+			$json = json_encode($ret);
+			$this->set_cache($cache_path, $json);		//缓存
+			return json_decode($json);
+		}
+
+		function set_cache($filepath, $content) {
+			$handle = fopen($filepath, 'w');
+			fwrite($handle, $content);
+			fclose($handle);
 		}
 
 		//删除表
@@ -152,6 +181,7 @@
 		function get_mongo_criteria($res) {
 			if(empty($res)) return '';
 			$r = explode(' ', $res);
+
 			array_push($r, '#');
 			$stack1 = array(); $p1 = -1;
 			$stack2 = array(); $p2 = -1;
@@ -200,21 +230,19 @@
 		//判断是否操作符
 		function issign($c) {
 			return preg_match('/^(\(|\)|==|!=|>|<|>=|<=|&&|#|(\|\|))$/', $c);
-			// if($c == '(' || $c == ')' || $c == '==' || $c == '!=' || $c == '>' || $c == '<' || $c == '>=' || $c == '<=' || $c == '&&' $c == '||' || $c == '#') return True;
-			// return False;
 		}
 
 		//转换元表达式
 		function cal($a, $op, $b) {
 			$ret = '';
-			if($op == '==') $ret = "array($a => $b)";
-			else if($op == '!=') $ret = "array($a => array('\$ne' => $b))";
-			else if($op == '>') $ret = "array($a => array('\$gt' => $b))";
-			else if($op == '<') $ret = "array($a => array('\$lt' => $b))";
-			else if($op == '>=') $ret = "array($a => array('\$gte' => $b))";
-			else if($op == '<=') $ret = "array($a => array('\$lte' => $b))";
-			else if($op == '&&') $ret = "array('\$and' => array($a, $b)";
-			else if($op == '||') $ret = "array('\$or' => array($a, $b)";
+			if($op == '==') $ret = array($a => $b);
+			else if($op == '!=') $ret = array($a => array('$ne', $b));
+			else if($op == '>') $ret = array($a => array('$gt', $b));
+			else if($op == '<') $ret = array($a => array('$lt', $b));
+			else if($op == '>=') $ret = array($a => array('$gte', $b));
+			else if($op == '<=') $ret = array($a => array('$lte', $b));
+			else if($op == '&&') $ret = array('$and' =>array($a, $b));
+			else if($op == '||') $ret = array('$or' =>array($a, $b));
 			return $ret;
 		}
 
@@ -320,10 +348,22 @@
 		
 		//查询		条件是一个调用的过程
 		function select($table, $criteria = '', $fields = array()) {
-			$query = '';
-			if(empty($criteria)) {
-				$query = "SELECT * FROM $table;";
+			// 缓存cache的路径
+			$cache_filename = hash('md5', $table . $criteria . implode('', $fields));
+			$cache_path = 'cache/' . $cache_filename;
+
+			// 判断是否存在缓存
+			if(file_exists($cache_path)) {
+				if(time() - fileatime($cache_path) > 200) {
+					unlink($cache_path);
+				}
+				else return json_decode(file_get_contents($cache_path));
 			}
+
+			// 不存在缓存或者缓存过期时
+			// 构造查询语句
+			$query = '';
+			if(empty($criteria)) $query = "SELECT * FROM $table;";
 			else {
 				$query = 'SELECT ';
 				if(empty($fields)) $query .= '*';
@@ -337,8 +377,23 @@
 				$query .= " FROM $table WHERE " . $this->get_mysql_criteria($criteria);
 				$query .= ';';
 			}
-			// echo $query . '<br />';
-			return mysqli_query($this->dbc, $query);
+
+			// 在数据库中查询
+			$data = mysqli_query($this->dbc, $query);
+			if($data) {
+				$ret = array();
+				while ($row = mysqli_fetch_array($data)) array_push($ret, $row);
+				$json = json_encode($ret);
+				$this->set_cache($cache_path, $json);		//缓存
+				return json_decode($json);
+			}
+			else return $data;
+		}
+
+		function set_cache($filepath, $content) {
+			$handle = fopen($filepath, 'w');
+			fwrite($handle, $content);
+			fclose($handle);
 		}
 
 		//删除表
@@ -380,7 +435,7 @@
 		}
 
 		//设置连入编码方式
-		function setnames($encoding) {
+		function set_names($encoding) {
 			return mysqli_query($this->dbc, "SET NAMES '$encoding'");
 		}
 
