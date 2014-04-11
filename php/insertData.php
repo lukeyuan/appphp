@@ -5,5 +5,5 @@
 	$sql->connect();
 	$ok = $sql->insert_all($json);
 	$sql->close();
-	return $ok;
+	echo $ok;
 ?>

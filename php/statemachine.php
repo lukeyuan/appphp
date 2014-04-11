@@ -21,7 +21,7 @@
 			$this->db = new DB();
 			$this->db->connect();
 			if($this->db instanceof MySQL) {
-				$this->db->create('user_state',
+				$this->db->sql->create('user_state',
 							  array('id' => 'INT', 'username' => 'VARCHAR(30)', 'state' => 'VARCHAR(1000)'),
 							  array('id'),
 							  array(),
