@@ -21,9 +21,11 @@
 				$openshift_variables = array_combine($v_names, $v_values);
 				// echo 'eheh' . $openshift_variables['DB'] . 'hehe';
 				if($openshift_variables['DB'] == 'mongo') {
+					// echo "MongoDB<br />";
 					$this->sql = new NoSQL();
 				}
 				else if($openshift_variables['DB'] == 'mysql') {
+					// echo "MySQL<br />";
 					$this->sql = new MySQL();
 				}
 				else $this->sql = null;
@@ -35,7 +37,7 @@
 
 		//数据库连接
 		function connect() {
-			$this->sql->connect();
+			return $this->sql->connect();
 		}
 
 		//数据库关闭
@@ -45,7 +47,7 @@
 
 		//建表
 		function create($table, $items_types, $notnull = array(), $default = array(), $auto_increment = array(), $primarykey = null) {
-			$query = $this->sql->create($table, $items_types, $notnull, $default, $auto_increment, $primarykey);
+			return $this->sql->create($table, $items_types, $notnull, $default, $auto_increment, $primarykey);
 		}
 
 		//插入
@@ -75,13 +77,30 @@
 
 		//更新
 		function update($table, $modify, $criteria = '') {
-			return $this->sql->$table->update($criteria, array('$set' => $modify));
+			// return $this->sql->$table->update($criteria, array('$set' => $modify));
+			return $this->sql->update($table, $modify, $criteria);
+		}
+
+		// 执行原生sql查询
+		function execute($query) {
+			return $this->sql->execute($query);
 		}
 
 		//设置连入编码方式
 		function set_names($encoding) {
 			return $this->sql->set_names($encoding);
 		}
+
+		// 保存缓存
+		function set_cache($filepath, $content) {
+			return $this->sql->set_cache($filepath, $content);
+		}
+
+		// 删除缓存
+		function rm_cache($filepath) {
+			return $this->sql->rm_cache($filepath);
+		}
+
 	}
 
 	/**
@@ -98,7 +117,7 @@
 		//数据库连接
 		function connect() {
 			$this->mongo_client = new MongoClient(DB_URL);
-			$this->dbc = $this->mongo_client->selectDB(DB_NAME);
+			return $this->dbc = $this->mongo_client->selectDB(DB_NAME);
 		}
 
 		//数据库关闭
@@ -156,10 +175,16 @@
 			return json_decode($json);
 		}
 
+		// 保存缓存
 		function set_cache($filepath, $content) {
 			$handle = fopen($filepath, 'w');
 			fwrite($handle, $content);
 			fclose($handle);
+		}
+
+		// 删除缓存
+		function rm_cache($filepath) {
+			return unlink($filepath);
 		}
 
 		//删除表
@@ -260,13 +285,13 @@
 
 		//数据库连接
 		function connect() {
-			$this->dbc = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+			return $this->dbc = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
 			// mysqli_query($this->dbc, "SET NAMES 'utf8'");
 		}
 
 		//数据库关闭
 		function close() {
-			mysqli_close($this->dbc);
+			return mysqli_close($this->dbc);
 		}
 
 		//建表
@@ -390,10 +415,16 @@
 			else return $data;
 		}
 
+		// 保存缓存
 		function set_cache($filepath, $content) {
 			$handle = fopen($filepath, 'w');
 			fwrite($handle, $content);
 			fclose($handle);
+		}
+
+		// 删除缓存
+		function rm_cache($filepath) {
+			return unlink($filepath);
 		}
 
 		//删除表
@@ -447,8 +478,16 @@
 				if($x == '==') $r[$i] = '=';
 				else if($x == '&&') $r[$i] = 'AND';
 				else if($x == '||') $r[$i] = 'OR';
+				if($x == '==' || $x == '<' || $x == '>' || $x == '<=' || $x == '>=') {
+					if($i+1 < count($r)) $r[$i+1] = "'" . $r[$i+1] . "'";
+				}
 			}
 			return implode(' ', $r);
+		}
+
+		// 执行原生sql查询
+		function execute($query) {
+			return mysqli_query($this->dbc, $query);
 		}
 
 		//生成名为$name，内容为$str的文件，测试用

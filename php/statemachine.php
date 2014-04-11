@@ -1,5 +1,5 @@
 <?php
-	require_once('connectvars.php');
+	require_once('sql.php');
 	/**
 	* State_Machine
 	*/
@@ -10,7 +10,7 @@
 		public $head;
 		public $nxt;
 		public $weight;
-		public $dbc;
+		public $db;
 
 		function __construct() {
 			$this->ecnt = 0;
@@ -18,14 +18,16 @@
 			$this->head = array();
 			$this->nxt = array();
 			$this->weight = array();
-			$this->dbc = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-			$query = "CREATE TABLE IF NOT EXISTS user_state (
-					  id int(11) NOT NULL AUTO_INCREMENT,
-					  username varchar(1000) NOT NULL,
-					  state varchar(1000) DEFAULT NULL,
-					  PRIMARY KEY (id)
-					) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
-			mysqli_query($this->dbc, $query) or die('error create table user_state');
+			$this->db = new DB();
+			$this->db->connect();
+			if($this->db instanceof MySQL) {
+				$this->db->create('user_state',
+							  array('id' => 'INT', 'username' => 'VARCHAR(30)', 'state' => 'VARCHAR(1000)'),
+							  array('id'),
+							  array(),
+							  array('id'),
+							  'id');
+			}
 		}
 
 		// 邻接表加边
@@ -43,77 +45,82 @@
 		// 新建用户状态
 		function create_state($user) {
 			$user_json = json_encode(array("state" => 'null', "select" => 'null', "fa" => array()));
-			$query = "INSERT INTO user_state (username, state) VALUES ('$user', '$user_json')";
-			return mysqli_query($this->dbc, $query);
+			return $this->db->insert('user_state', array('username' => $user, 'state' => $user_json));
 		}
 
 		// 重置用户状态
 		function reset_state($user) {
 			$user_json = json_encode(array("state" => 'null', "select" => 'null', "fa" => array()));
-			$query = "UPDATE user_state SET state = '$user_json' WHERE username = '$user'";
-			return mysqli_query($this->dbc, $query);			
+			return $this->db->update('user_state', array('state' => $user_json), "username == $user");
 		}
 
 		// 获取用户当前状态
 		function get_state($user) {
-			$query = "SELECT state FROM user_state WHERE username = '$user';";
-			$data = mysqli_query($this->dbc, $query) or die('error querying database');
-			$rows = mysqli_num_rows($data);
-			if($rows == 1) {
-				$row = mysqli_fetch_array($data);
-				$user_json = $row['state'];
+			$data = $this->db->select('user_state', "username == $user", array('state'));
+			if(count($data) == 1) {
+				$row = $data[0];
+				$user_json = $row->state;
 				$user_json_content = json_decode($user_json);
-				return $user_json_content->state;
+				return $user_json_content->state;				
 			}
 			else {
 				$this->create_state($user);
-				return 'null';
+				$cache_filename = hash('md5', 'user_state' . "username == $user" . implode('', array('state')));
+				$cache_path = 'cache/' . $cache_filename;
+				$this->db->rm_cache($cache_path);
+				return 'null';				
 			}
 		}
 
 		// 获取用户上一次的选择
 		function get_select($user) {
-			$query = "SELECT state FROM user_state WHERE username = '$user';";
-			$data = mysqli_query($this->dbc, $query) or die('error querying database');
-			$rows = mysqli_num_rows($data);
-			if($rows == 1) {
-				$row = mysqli_fetch_array($data);
-				$user_json = $row['state'];
+			$data = $this->db->select('user_state', "username == $user", array('state'));
+			if(count($data) == 1) {
+				$row = $data[0];
+				$user_json = $row->state;
 				$user_json_content = json_decode($user_json);
-				return $user_json_content->select;
-			}					
+				return $user_json_content->select;				
+			}
 			else {
 				$this->create_state($user);
+				$cache_filename = hash('md5', 'user_state' . "username == $user" . implode('', array('state')));
+				$cache_path = 'cache/' . $cache_filename;
+				$this->db->rm_cache($cache_path);
 				return 'null';
 			}
 		}
 
 		// 保存用户状态
 		function save_state($user, $state, $select) {
-			$query = "SELECT state FROM user_state WHERE username = '$user';";
-			$data = mysqli_query($this->dbc, $query) or die('error querying database');
-			$rows = mysqli_num_rows($data);
-			if($rows == 1) {
-				$row = mysqli_fetch_array($data);
-				$user_json = $row['state'];
+			$data = $this->db->select('user_state', "username == $user", array('state'));
+			// 删缓存，因为下面会更新记录
+			$cache_filename = hash('md5', 'user_state' . "username == $user" . implode('', array('state')));
+			$cache_path = 'cache/' . $cache_filename;
+			$this->db->rm_cache($cache_path);		
+
+			if(count($data) == 1) {			
+				$row = $data[0];
+				$user_json = $row->state;
 				//不要存json前后的单引号
 				$user_json_content = json_decode($user_json);
 				$user_json_content = array('fa' => $user_json_content, 'state' => $state, 'select' => $select);
 				$user_json = json_encode($user_json_content);
-				$query = "UPDATE user_state SET state = '$user_json' WHERE username = '$user'";
-				return mysqli_query($this->dbc, $query) or die ('error querying database.');
+				return $this->db->update('user_state', array('state' => $user_json), "username == $user");
 			}					
 			else $this->create_state($user);			
 		}
 
 		// 回滚用户状态
 		function rollback($user) {
-			$query = "SELECT state FROM user_state WHERE username = '$user';";
-			$data = mysqli_query($this->dbc, $query) or die('error querying database');
-			$rows = mysqli_num_rows($data);
-			if($rows == 1) {
-				$row = mysqli_fetch_array($data);
-				$user_json = $row['state'];
+			$data = $this->db->select('user_state', "username == $user", array('state'));
+			// 删缓存，因为下面会更新记录
+			$cache_filename = hash('md5', 'user_state' . "username == $user" . implode('', array('state')));
+			$cache_path = 'cache/' . $cache_filename;
+			$this->db->rm_cache($cache_path);
+
+			if(count($data) == 1) {			
+				$row = $data[0];
+				$user_json = $row->state;
 				$user_json_content = json_decode($user_json);		//会解析所有层次
 				if($user_json_content->fa == array()) return False;
 				$fa_json_content = $user_json_content->fa;
@@ -122,10 +129,9 @@
 				$fa = $fa_json_content->fa;
 				$user_json_content = array('fa' => $fa, 'state' => $state, 'select' => $select);
 				$user_json = json_encode($user_json_content);
-				$query = "UPDATE user_state SET state = '$user_json' WHERE username = '$user'";
-				return mysqli_query($this->dbc, $query) or die ('error querying database.');
+				return $this->db->update('user_state', array('state' => $user_json), "username == $user");
 			}					
-			else if($rows == 0) $this->create_state($user);			
+			else if(count($data) == 0) $this->create_state($user);			
 
 		}
 
@@ -136,8 +142,6 @@
 				$this->head[$cur_state] = -1;
 			}
 			for ($e = $this->head[$cur_state]; $e != -1; $e = $this->nxt[$e]) { 
-				// $this->dp($this->edge_to[$e]);
-				// $this->dp($this->weight[$e]);	
 				if($this->edge_to[$e] == $target_state) {
 					$regex = $this->weight[$e];
 					if(preg_match($regex, $select)) return True;
@@ -160,12 +164,12 @@
 		}
 
 		function dp($s) {
-			echo "$s <br />";
+			var_dump($s);
 		}
 	}
 
-	$sm = new State_Machine();
-	$sm->add_edge('null', '1', '//');
+	// $sm = new State_Machine();
+	// $sm->add_edge('null', '1', '//');
 	// $sm->add_edge('111', '2', '/^1$/');
 	// $sm->add_edge('111', '4', '/^2$/');
 	// $sm->dp($sm->get_state('xiaodanding'));

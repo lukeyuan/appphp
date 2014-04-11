@@ -20,9 +20,9 @@
                         define('DB_HOST', $openshift_variables['OPENSHIFT_MYSQL_DB_HOST']);
                         define('DB_USER', $openshift_variables['OPENSHIFT_MYSQL_DB_USERNAME']);
                         define('DB_PASSWORD', $openshift_variables['OPENSHIFT_MYSQL_DB_PASSWORD']);
-                        define('DB_NAME', $openshift_variables['OPENSHIFT_APP_NAME']);
                 }
                 else define('DB_URL', $openshift_variables['OPENSHIFT_MONGODB_DB_URL']);
+                define('DB_NAME', $openshift_variables['OPENSHIFT_APP_NAME']);
         }
         // define('DB_HOST', 'localhost');
         // define('DB_USER', 'root');
