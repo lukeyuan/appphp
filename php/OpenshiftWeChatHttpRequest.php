@@ -19,6 +19,7 @@
 			$values = array();
 			foreach ($postObj as $key => $value) {
 				array_push($names, $key);
+				if($value instanceof SimpleXMLElement) $value = (string)$value;
 				array_push($values, $value);
 			}
 			$para = array_merge($para, array_combine($names, $values));
