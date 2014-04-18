@@ -20,14 +20,14 @@
 			$this->weight = array();
 			$this->db = new DB();
 			$this->db->connect();
-			if($this->db instanceof MySQL) {
+			//if($this->db instanceof MySQL) {
 				$this->db->sql->create('user_state',
 							  array('id' => 'INT', 'username' => 'VARCHAR(30)', 'state' => 'VARCHAR(1000)'),
 							  array('id'),
 							  array(),
 							  array('id'),
 							  'id');
-			}
+			//}
 		}
 
 		// 邻接表加边
