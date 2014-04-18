@@ -24,7 +24,7 @@ fi
 
 cp -r $OPENSHIFT_APPPHP_DIR/php $OPENSHIFT_REPO_DIR
 if [[ -n "$DOWNLOAD_PATH" ]]; then
- wget $DOWNLOAD_PATH -P $OPENSHIFT_REPO_DIR/php
+ wget -N $DOWNLOAD_PATH -P $OPENSHIFT_REPO_DIR/php
 fi
 
 exit 0
