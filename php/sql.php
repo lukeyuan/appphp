@@ -145,6 +145,7 @@
 			for($i = 1; $i < $len; $i++) {
 				$this->insert($table, array_combine($data[0], $data[$i]));
 			}
+			return true;
 		}
 
 		//查询
@@ -369,6 +370,7 @@
 			for($i = 1; $i < $len; $i++) {
 				$this->insert($table, array_combine($data[0], $data[$i]));
 			}
+			return true;
 		}
 		
 		//查询		条件是一个调用的过程
